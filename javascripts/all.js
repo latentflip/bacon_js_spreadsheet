@@ -12729,10 +12729,16 @@ if ( typeof define === "function" && define.amd && define.amd.jQuery ) {
         }
       });
       inputStream.filter(f.isntEquation).map(f.coerceFieldValue).onValue(function(value) {
+        resultStreams[reference] && resultStreams[reference]();
+        console.log("value = ", value);
         return valueStream.push(value);
       });
       return valueProperty.map(function(v) {
-        return parseFloat(v.toFixed(3));
+        if (_.isNumber(v)) {
+          return parseFloat(v.toFixed(3));
+        } else {
+          return v;
+        }
       }).assign($result, "text");
     });
     $("[data-reference=A1]").val("100").change();
