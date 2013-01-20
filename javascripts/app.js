@@ -91,10 +91,11 @@
     window.inputStreams = {};
     window.valueStreams = {};
     window.valueProperties = {};
+    window.resultStreams = {};
     valueProperties.time = Bacon.fromPoll(100, function(v) {
       return new Bacon.Next(new Date().getTime());
     }).toProperty();
-    return $('td input').each(function() {
+    $('td input').each(function() {
       var $cell, $result, inputStream, reference, valueProperty, valueStream;
       $cell = $(this);
       $result = $cell.closest('td').find('div.result');
@@ -108,6 +109,7 @@
       inputStream.filter(f.isEquation).onValue(function(equation) {
         var cellRef, cellRefs, result, stream, _i, _len, _ref;
         cellRefs = f.findCellReferencesInEquation(equation);
+        resultStreams[reference] && resultStreams[reference]();
         if (cellRefs.length > 0) {
           result = valueProperties[cellRefs[0]].map(function(v) {
             return [v];
@@ -124,7 +126,7 @@
           result = result.map(function(args) {
             return f.applyOrderedArgsToEquation(args, equation);
           });
-          return result.onValue(function(value) {
+          return resultStreams[reference] = result.onValue(function(value) {
             return valueStream.push(value);
           });
         } else {
@@ -138,6 +140,9 @@
         return parseFloat(v.toFixed(3));
       }).assign($result, "text");
     });
+    $("[data-reference=A1]").val("100").change();
+    $("[data-reference=B1]").val("=time").change();
+    return $("[data-reference=C1]").val("=Math.sin(B1) + A1").change();
   });
 
 }).call(this);
