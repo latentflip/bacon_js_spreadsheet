@@ -1,0 +1,13 @@
+{
+  "name"           : "baconjs",
+  "version"        : "0.0.9",
+  "author"         : "Juha Paananen",
+  "licenses"       : ["MIT"],
+  "dependencies"   : {},
+  "devDependencies": {"jasmine-node" : ">=1.0.x",
+                      "coffee-script": ">=1.2.x"},
+  "scripts"        : {"test": "jasmine-node --coffee spec",
+                      "pre-publish": "cake build"},
+  "main"           : "lib/Bacon.js"
+}
+

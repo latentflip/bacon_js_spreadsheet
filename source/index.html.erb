@@ -1,0 +1,23 @@
+---
+title: Welcome to Middleman
+---
+
+<% cells = ("A".."G").to_a %>
+<% rows = (1..8).to_a %>
+
+<table>
+  <tr><th><%= "<th>" + cells.join("<th>") %></tr>
+  <% rows.each do |row| %>
+    <tr>
+      <th><%= row %></th>
+      <% cells.each do |cell| %>
+        <td>
+          <div>
+            <div class="result" data-reference"<%= cell + row.to_s %>"></div>
+            <input type="text" data-reference="<%= cell + row.to_s %>" data-value="123">
+          </div>
+        </td>
+      <% end %>
+    </tr>
+  <% end %>
+</table>
