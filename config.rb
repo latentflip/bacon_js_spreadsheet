@@ -73,5 +73,5 @@ configure :build do
   # activate :smusher
 
   # Or use a different image path
-  set :http_path, "/spreadsheet"
+  set :http_path, "/bacon_js_spreadsheet"
 end
