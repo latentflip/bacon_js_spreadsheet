@@ -12596,8 +12596,9 @@ if ( typeof define === "function" && define.amd && define.amd.jQuery ) {
 (function() {
 
   $(function() {
+    var keyMap;
     window.r = {
-      cellReferenceMatchAll: /[A-Z]+[1-9]+[0-9]*/g
+      cellReferenceMatchAll: /([A-Z]+[1-9]+[0-9]*|time)/g
     };
     window.f = {
       isNumber: function(string) {
@@ -12619,7 +12620,7 @@ if ( typeof define === "function" && define.amd && define.amd.jQuery ) {
         return !f.isEquation(string);
       },
       findCellReferencesInEquation: function(equation) {
-        return equation.match(r.cellReferenceMatchAll);
+        return equation.match(r.cellReferenceMatchAll) || [];
       },
       replaceVariablesInEquation: function(equation) {
         var lastReplace;
@@ -12632,7 +12633,6 @@ if ( typeof define === "function" && define.amd && define.amd.jQuery ) {
       },
       applyOrderedArgsToEquation: function(args, equation) {
         equation = f.replaceVariablesInEquation(equation);
-        console.log("applying", args, "to", equation);
         return eval(equation);
       },
       coerceFieldValue: function(value) {
@@ -12646,11 +12646,49 @@ if ( typeof define === "function" && define.amd && define.amd.jQuery ) {
         } else {
           return value;
         }
+      },
+      incrementCellReference: function(cellRef, dir) {
+        cellRef = cellRef.replace(/^[A-Z]/, function(alpha) {
+          if (dir === "left" && alpha !== "A") {
+            return String.fromCharCode(alpha.charCodeAt(0) - 1);
+          }
+          if (dir === "right") {
+            return String.fromCharCode(alpha.charCodeAt(0) + 1);
+          }
+          return alpha;
+        });
+        return cellRef = cellRef.replace(/[0-9]+$/, function(n) {
+          n = parseInt(n);
+          if (dir === "up" && n > 1) {
+            return n - 1;
+          }
+          if (dir === "down") {
+            return n + 1;
+          }
+          return n;
+        });
       }
     };
+    keyMap = {
+      38: "up",
+      40: "down",
+      13: "down"
+    };
+    $('td input').asEventStream('keyup').filter(function(ev) {
+      return _.chain(keyMap).keys().contains(ev.keyCode.toString()).value();
+    }).onValue(function(ev) {
+      var currentRef, dir, newRef;
+      dir = keyMap[ev.keyCode];
+      currentRef = $(ev.currentTarget).data("reference");
+      newRef = f.incrementCellReference(currentRef, dir);
+      return $("input[data-reference=" + newRef + "]").focus();
+    });
     window.inputStreams = {};
     window.valueStreams = {};
     window.valueProperties = {};
+    valueProperties.time = Bacon.fromPoll(100, function(v) {
+      return new Bacon.Next(new Date().getTime());
+    }).toProperty();
     return $('td input').each(function() {
       var $cell, $result, inputStream, reference, valueProperty, valueStream;
       $cell = $(this);
@@ -12665,29 +12703,35 @@ if ( typeof define === "function" && define.amd && define.amd.jQuery ) {
       inputStream.filter(f.isEquation).onValue(function(equation) {
         var cellRef, cellRefs, result, stream, _i, _len, _ref;
         cellRefs = f.findCellReferencesInEquation(equation);
-        result = valueProperties[cellRefs[0]].map(function(v) {
-          return [v];
-        });
-        _ref = cellRefs.slice(1);
-        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-          cellRef = _ref[_i];
-          stream = valueProperties[cellRef];
-          result = result.combine(stream, function(arr, v) {
-            arr.push(v);
-            return arr;
+        if (cellRefs.length > 0) {
+          result = valueProperties[cellRefs[0]].map(function(v) {
+            return [v];
           });
+          _ref = cellRefs.slice(1);
+          for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+            cellRef = _ref[_i];
+            stream = valueProperties[cellRef];
+            result = result.combine(stream, function(arr, v) {
+              arr.push(v);
+              return arr;
+            });
+          }
+          result = result.map(function(args) {
+            return f.applyOrderedArgsToEquation(args, equation);
+          });
+          return result.onValue(function(value) {
+            return valueStream.push(value);
+          });
+        } else {
+          return valueStream.push(f.applyOrderedArgsToEquation([], equation));
         }
-        result = result.map(function(args) {
-          return f.applyOrderedArgsToEquation(args, equation);
-        });
-        return result.onValue(function(value) {
-          return valueStream.push(value);
-        });
       });
       inputStream.filter(f.isntEquation).map(f.coerceFieldValue).onValue(function(value) {
         return valueStream.push(value);
       });
-      return valueProperty.assign($result, "text");
+      return valueProperty.map(function(v) {
+        return parseFloat(v.toFixed(3));
+      }).assign($result, "text");
     });
   });
 
